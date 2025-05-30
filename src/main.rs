@@ -1,11 +1,14 @@
-use actix_web::{web, App, HttpServer};
+use actix_web::{middleware::from_fn, web::{self, scope}, App, HttpServer};
 use errors::AppError;
-use handler::*;
 use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-mod handler;
 mod errors;
+mod models;
+mod schema;
+mod handlers;
+mod utils;
+mod middlewares;
 
 struct GlobalState{
     pool: Pool<Postgres>
@@ -18,6 +21,9 @@ async fn main() -> Result<(), AppError> {
 
     let address = "127.0.0.1:8080";
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE URL must be set");
+
+    std::env::var("USER_JWT_PASSWORD").expect("USER_JWT_PASSWORD must be set");
+    std::env::var("ADMIN_JWT_PASSWORD").expect("ADMIN_JWT_PASSWORD must be set");
 
     let pool = PgPoolOptions::new()
     .max_connections(5)
@@ -35,9 +41,36 @@ async fn main() -> Result<(), AppError> {
         move||{
             App::new()
             .service(
-                web::scope("/api/v1")
+                scope("/api/v1")
                 .app_data(app_data.clone())
-                .service(hello_world)
+                .service(handlers::hello_world)
+                // place this before /user , else other will get matched
+                .service(
+                    scope("/user/purchases")
+                    .wrap(from_fn(middlewares::user::user_middleware))
+                    .service(handlers::user::user_purchases)
+                )
+                .service(
+                    scope("/user")
+                    .service(handlers::user::signup_user)
+                    .service(handlers::user::signin_user)
+                )
+                .service(
+                    scope("/admin")
+                    .service(handlers::admin::signup_admin)
+                    .service(handlers::admin::signin_admin)
+                )
+                // TODO: add admin middleware and other routes
+                .service(
+                    // guard the purchase handler
+                    scope("/courses/purchase")
+                    .wrap(from_fn(middlewares::user::user_middleware))
+                    .service(handlers::course::purchase_course_handler)
+                )
+                .service(
+                    scope("/courses")
+                    .service(handlers::course::get_all_courses_handler)
+                )
             )
         }
     ).bind(address)
