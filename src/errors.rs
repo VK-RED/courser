@@ -1,5 +1,7 @@
 use actix_web::{http::StatusCode, ResponseError};
+use serde::Serialize;
 use thiserror::Error;
+use derive_more::derive::{Display, Error as DeriveMoreError};
 
 #[derive(Debug, Error)]
 pub enum AppError{
@@ -8,9 +10,18 @@ pub enum AppError{
     #[error("Cant connect to the DB")]
     DbConnect,
     #[error("Cant start the server")]
-    ServerStart
+    ServerStart,
+    #[error("Internal Server Error")]
+    InternalError
 }
 
+#[derive(Debug, Display, DeriveMoreError, Serialize)]
+#[display("error :{}", error)]
+pub struct CustomError{
+    pub error:&'static str
+}
+
+impl ResponseError for CustomError{}
 
 impl ResponseError for AppError {
     fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
@@ -21,7 +32,8 @@ impl ResponseError for AppError {
         match *self {
             AppError::DbConnect => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::ServerStart => StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::SocketBind => StatusCode::INTERNAL_SERVER_ERROR
+            AppError::SocketBind => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
