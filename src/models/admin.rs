@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 
-use crate::{errors::CustomError, schema::{admin::{CreateAdmin, CreateCourse, UpdateCourse}, StructWithId, StructWithVal}};
+use crate::{errors::CustomError, schema::{admin::CreateAdmin, StructWithId, StructWithVal}};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Admin{
