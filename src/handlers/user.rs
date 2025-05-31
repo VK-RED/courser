@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use actix_web::{get, post, web::{self, Json}, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post, web::{self, Json}, HttpMessage, HttpRequest, HttpResponse, Responder,test};
 use chrono::{Utc, Duration};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::types::{Uuid};
@@ -15,13 +15,13 @@ async fn signup_user(data:web::Data<GlobalState>, user:Json<CreateUser>) -> impl
     }
 
     if user_exists.unwrap() == true{
-        return HttpResponse::BadRequest().json(CustomError{error:"User exists already with this email"});
+        return HttpResponse::BadRequest().json(CustomError{error:"User exists already with this email".to_string()});
     }
 
     let password_hash = hash_password(&user.password);
 
     if let Err(_e) = password_hash{
-        return HttpResponse::InternalServerError().json(CustomError{error:"Something went wrong !"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Something went wrong !".to_string()});
     }
 
     let user_meta = CreateUser{
@@ -49,7 +49,7 @@ async fn signin_user(data:web::Data<GlobalState>, user_data:web::Json<EmailAndPa
 
     // throw when user not found
     if user_exists.unwrap() == false {
-        return HttpResponse::BadRequest().json(CustomError{error:"Signup first"});
+        return HttpResponse::BadRequest().json(CustomError{error:"Signup first".to_string()});
     }
 
     let pool = &data.pool;
@@ -74,12 +74,12 @@ async fn signin_user(data:web::Data<GlobalState>, user_data:web::Json<EmailAndPa
     let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(jwt_secret.as_bytes()));
 
     if let Err(_) = token {
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     match is_valid {
-        Ok(()) => HttpResponse::Ok().json(SigninResponse{message:String::from("Signined in Successfully"), token:token.unwrap()}),
-        Err(_) => HttpResponse::BadRequest().json(CustomError{error:"Enter Valid Password"}) 
+        Ok(()) => HttpResponse::Ok().json(SigninResponse{message:String::from("Signined in Successfully".to_string()), token:token.unwrap()}),
+        Err(_) => HttpResponse::BadRequest().json(CustomError{error:"Enter Valid Password".to_string()}) 
     }
 
 }
@@ -89,7 +89,7 @@ async fn user_purchases(data:web::Data<GlobalState>, req:HttpRequest) -> impl Re
     let user_struct = req.extensions().get::<StructWithEmail>().cloned();
 
     if user_struct.is_none(){
-        return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
+        return HttpResponse::Forbidden().json(CustomError{error:"email missing".to_string()});
     }
 
     let user_email = user_struct.unwrap().email;
@@ -107,7 +107,7 @@ async fn user_purchases(data:web::Data<GlobalState>, req:HttpRequest) -> impl Re
     let user_uuid_res = Uuid::from_str(&user_id);
 
     if user_uuid_res.is_err(){
-        return HttpResponse::Forbidden().json(CustomError{error:"Internal Error"})
+        return HttpResponse::Forbidden().json(CustomError{error:"Internal Error".to_string()})
     }
 
     let purchases_res = get_user_purchases(pool, user_uuid_res.unwrap()).await;
@@ -117,5 +117,122 @@ async fn user_purchases(data:web::Data<GlobalState>, req:HttpRequest) -> impl Re
         Err(e) => HttpResponse::BadRequest().json(e)
     }
     
+
+}
+
+#[cfg(test)]
+mod tests{
+
+    use crate::test_init_app::init;
+
+    use super::*;
+    
+    // #[actix_web::test]
+    // async fn test_signup_user(){
+
+    //     let app = init(signup_user).await;
+
+    //     let user = CreateUser{
+    //         email: String::from("vk@gmail.com"),
+    //         name: String::from("Iron Man"),
+    //         password: String::from("THERIYATHU")
+    //     };
+
+    //     let res = test::TestRequest::post()
+    //     .set_json(user)
+    //     .uri("/api/v1/user/signup")
+    //     .send_request(&app)
+    //     .await;
+
+    //     assert!(res.status().is_success());
+
+    //     let signup_res_body:SignupResponse = test::read_body_json(res).await;
+        
+    //     assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
+
+    // }
+
+    #[actix_web::test]
+    async fn test_signin_user(){
+        let app = init(signin_user).await;
+
+        let json = EmailAndPassword {
+            email: "vk@gmail.com".to_string(),
+            password: "THERIYATHU".to_string(),
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(json)
+        .uri("/api/v1/user/signin")
+        .send_request(&app)
+        .await;
+
+        assert!(res.status().is_success());
+
+        let res_body:SigninResponse = test::read_body_json(res).await;
+
+        assert_eq!(&res_body.message, "Signined in Successfully");
+    }   
+
+    #[actix_web::test]
+    async fn test_invalid_credentials(){
+        let app = init(signin_user).await;
+
+        let json = EmailAndPassword {
+            email: "vk@gmail.com".to_string(),
+            password: "IRONMAN".to_string(),
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(json)
+        .uri("/api/v1/user/signin")
+        .send_request(&app)
+        .await;
+
+        let res_body:CustomError = test::read_body_json(res).await;
+        assert_eq!(res_body.error, "Enter Valid Password".to_string());
+    }   
+
+    #[actix_web::test]
+    async fn test_signin_with_unused_email(){
+        let app = init(signin_user).await;
+        let json = EmailAndPassword {
+            email: "rk@gmail.com".to_string(),
+            password: "THERIYATHU".to_string(),
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(json)
+        .uri("/api/v1/user/signin")
+        .send_request(&app)
+        .await;
+
+        let res_body:CustomError = test::read_body_json(res).await;
+        assert_eq!(res_body.error, "Signup first".to_string());
+    }
+
+    #[actix_web::test]
+    async fn test_signup_with_used_email(){
+        let app = init(signup_user).await;
+
+        let user = CreateUser{
+            email: String::from("vk@gmail.com"),
+            name: String::from("Iron Man"),
+            password: String::from("THERIYATHU")
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(user)
+        .uri("/api/v1/user/signup")
+        .send_request(&app)
+        .await;
+
+        assert!(!res.status().is_success());
+
+        let res_body:CustomError = test::read_body_json(res).await;
+        assert_eq!(res_body.error, "User exists already with this email".to_string());
+
+    }
+
 
 }
