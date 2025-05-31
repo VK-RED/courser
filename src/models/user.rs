@@ -22,7 +22,7 @@ pub async fn check_user_exists(pool:&Pool<Postgres>, email:&str) -> Result<bool,
         email
     )
     .fetch_optional(pool)
-    .await.map_err(|_e|CustomError{error:"Error while fetching user by email"})?;
+    .await.map_err(|_e|CustomError{error:"Error while fetching user by email".to_string()})?;
 
     match result {
         Some(_val) => Ok(true),
@@ -48,7 +48,7 @@ pub async fn create_user(pool:&Pool<Postgres>, user_meta: CreateUser) -> Result<
 
     match user {
         Ok(val) => Ok(val.id),
-        Err(_e) => Err(CustomError{error:"Error while creating user"})
+        Err(_e) => Err(CustomError{error:"Error while creating user".to_string()})
     }
 }
 
@@ -64,7 +64,7 @@ pub async fn retrieve_password(pool:&Pool<Postgres>, email:&str) -> Result<Strin
     )
     .fetch_one(pool)
     .await
-    .map_err(|_e|CustomError{error:"Error while retrieving user password"})?;
+    .map_err(|_e|CustomError{error:"Error while retrieving user password".to_string()})?;
 
     Ok(res.val)
 }
@@ -80,7 +80,7 @@ pub async fn get_user_id_by_email(pool:&Pool<Postgres>, email:&String) -> Result
         email
     ).fetch_one(pool)
     .await
-    .map_err(|_|CustomError{error:"Error while fetching user id"})?;
+    .map_err(|_|CustomError{error:"Error while fetching user id".to_string()})?;
 
     Ok(result.id)
 }

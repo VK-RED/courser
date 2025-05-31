@@ -11,7 +11,7 @@ pub async fn user_middleware(
     let authorization = req.headers().get("Authorization");
 
     if authorization.is_none(){
-        return Err(Error::from(CustomError{error:"Token Not found"}));
+        return Err(Error::from(CustomError{error:"Token Not found".to_string()}));
     }
 
     let token = authorization.unwrap().to_str();
@@ -27,7 +27,7 @@ pub async fn user_middleware(
     let decoded = decode::<JWTClaims>(token, &DecodingKey::from_secret(key.as_bytes()), &Validation::default());
 
     if decoded.is_err(){
-        return Err(Error::from(CustomError{error:"Invalid token"}));
+        return Err(Error::from(CustomError{error:"Invalid token".to_string()}));
     }
 
     let claims = decoded.unwrap();

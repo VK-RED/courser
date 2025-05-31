@@ -17,13 +17,13 @@ async fn signup_admin(data:web::Data<GlobalState>, admin:Json<CreateAdmin>) -> i
     }
 
     if admin_exists.unwrap() == true{
-        return HttpResponse::BadRequest().json(CustomError{error:"User exists already with this email"});
+        return HttpResponse::BadRequest().json(CustomError{error:"User exists already with this email".to_string()});
     }
 
     let password_hash = hash_password(&admin.password);
 
     if let Err(_e) = password_hash{
-        return HttpResponse::InternalServerError().json(CustomError{error:"Something went wrong !"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Something went wrong !".to_string()});
     }
 
     let admin_meta = CreateAdmin{
@@ -51,7 +51,7 @@ async fn signin_admin(data:web::Data<GlobalState>, admin_data:web::Json<EmailAnd
 
     // throw when user not found
     if user_exists.unwrap() == false {
-        return HttpResponse::BadRequest().json(CustomError{error:"Signup first"});
+        return HttpResponse::BadRequest().json(CustomError{error:"Signup first".to_string()});
     }
 
     let pool = &data.pool;
@@ -76,12 +76,12 @@ async fn signin_admin(data:web::Data<GlobalState>, admin_data:web::Json<EmailAnd
     let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(jwt_secret.as_bytes()));
 
     if let Err(_) = token {
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     match is_valid {
         Ok(()) => HttpResponse::Ok().json(SigninResponse{message:String::from("Signined in Successfully"), token:token.unwrap()}),
-        Err(_) => HttpResponse::BadRequest().json(CustomError{error:"Enter Valid Password"}) 
+        Err(_) => HttpResponse::BadRequest().json(CustomError{error:"Enter Valid Password".to_string()}) 
     }
 
 }
@@ -93,7 +93,7 @@ async fn create_course_handler(data:web::Data<GlobalState>, course:Json<CreateCo
     let admin_email = req.extensions().get::<String>().cloned();
 
     if admin_email.is_none(){
-        return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
+        return HttpResponse::Forbidden().json(CustomError{error:"email missing".to_string()});
     }
 
     let admin_email = admin_email.unwrap();
@@ -107,7 +107,7 @@ async fn create_course_handler(data:web::Data<GlobalState>, course:Json<CreateCo
     let admin_uuid = Uuid::from_str(&admin_exists.unwrap());
 
     if admin_uuid.is_err(){
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     let course = CreateCourse{
@@ -145,13 +145,13 @@ async fn update_course_handler(data:web::Data<GlobalState>, course:Json<UpdateCo
     let course_uuid = Uuid::from_str(&course_id);
 
     if course_uuid.is_err(){
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     let admin_email = req.extensions().get::<String>().cloned();
 
     if admin_email.is_none(){
-        return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
+        return HttpResponse::Forbidden().json(CustomError{error:"email missing".to_string()});
     }
 
     let admin_email = admin_email.unwrap();
@@ -165,7 +165,7 @@ async fn update_course_handler(data:web::Data<GlobalState>, course:Json<UpdateCo
     let admin_uuid = Uuid::from_str(&admin_exists.unwrap());
 
     if admin_uuid.is_err(){
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     let existing_course = course::get_course_by_id(pool, course_uuid.unwrap()).await;
@@ -177,7 +177,7 @@ async fn update_course_handler(data:web::Data<GlobalState>, course:Json<UpdateCo
     let existing_course = existing_course.unwrap();
 
     if existing_course.admin_id != admin_uuid.unwrap(){
-        return HttpResponse::Forbidden().json(CustomError{error:"Unauthorized"});
+        return HttpResponse::Forbidden().json(CustomError{error:"Unauthorized".to_string()});
     }
 
     let course = UpdateCourse{
@@ -212,7 +212,7 @@ async fn get_all_courses_handler(data:web::Data<GlobalState>, req:HttpRequest) -
     let admin_email = req.extensions().get::<String>().cloned();
 
     if admin_email.is_none(){
-        return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
+        return HttpResponse::Forbidden().json(CustomError{error:"email missing".to_string()});
     }
 
     let admin_email = admin_email.unwrap();
@@ -226,7 +226,7 @@ async fn get_all_courses_handler(data:web::Data<GlobalState>, req:HttpRequest) -
     let admin_uuid = Uuid::from_str(&admin_exists.unwrap());
 
     if admin_uuid.is_err(){
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     let courses = course::get_all_admin_courses(pool, admin_uuid.unwrap()).await;

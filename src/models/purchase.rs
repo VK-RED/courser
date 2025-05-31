@@ -22,7 +22,7 @@ pub async fn get_user_purchases(pool:&Pool<Postgres>, user_id:Uuid) -> Result<Ve
     )
     .fetch_all(pool)
     .await
-    .map_err(|_e|CustomError{error:"Error while fetching user purchases"})?;
+    .map_err(|_e|CustomError{error:"Error while fetching user purchases".to_string()})?;
 
     Ok(user_purchases)
 }
@@ -44,6 +44,6 @@ pub async fn purchase_course(pool:&Pool<Postgres>, course_id:Uuid, user_id:Uuid)
 
     match result {
         Ok(val) => Ok(val),
-        Err(_) => Err(CustomError { error: "Error while purchasing the course" })
+        Err(_) => Err(CustomError { error: "Error while purchasing the course".to_string()})
     }
 }

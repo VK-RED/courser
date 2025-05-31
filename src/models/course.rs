@@ -29,7 +29,7 @@ pub async fn create_course(pool:&Pool<Postgres>, course_details:CreateCourse) ->
 
     match result {
         Ok(val) => Ok(val),
-        Err(_) => Err(CustomError { error: "Error while creating a course" })
+        Err(_) => Err(CustomError { error: "Error while creating a course".to_string() })
     }
 }
 
@@ -48,7 +48,7 @@ pub async fn get_course_by_id(pool:&Pool<Postgres>, id:Uuid)->Result<Course, Cus
 
     match result {
         Ok(val) => Ok(val),
-        Err(_) => Err(CustomError { error: "Error while fetching the course" })
+        Err(_) => Err(CustomError { error: "Error while fetching the course".to_string()})
     }
 
 }
@@ -70,7 +70,7 @@ pub async fn update_course(pool:&Pool<Postgres>, updated_course: UpdateCourse) -
 
     match result {
         Ok(val) => Ok(val),
-        Err(_) => Err(CustomError { error: "Error while updating the course" })
+        Err(_) => Err(CustomError { error: "Error while updating the course".to_string()})
     }
 }
 
@@ -89,7 +89,7 @@ pub async fn get_all_admin_courses(pool:&Pool<Postgres>, admin_id:Uuid) -> Resul
 
     match result {
         Ok(val) => Ok(val),
-        Err(_) => Err(CustomError { error: "Error while fetching all the courses" })
+        Err(_) => Err(CustomError { error: "Error while fetching all the courses".to_string()})
     }
 }
 
@@ -106,6 +106,6 @@ pub async fn get_all_courses(pool:&Pool<Postgres>) -> Result<Vec<Course>, Custom
 
     match result {
         Ok(val) => Ok(val),
-        Err(_) => Err(CustomError { error: "Error while fetching all the courses" })
+        Err(_) => Err(CustomError { error: "Error while fetching all the courses".to_string()})
     }
 }

@@ -16,19 +16,19 @@ pub struct StructWithVal{
     pub val: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SignupResponse{
     pub message: String,
     pub id: String
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct EmailAndPassword{
     pub email: String,
     pub password: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct SigninResponse{
     pub message: String,
     pub token: String,

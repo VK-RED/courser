@@ -13,7 +13,7 @@ async fn purchase_course_handler(data:web::Data<GlobalState>, path:web::Path<Str
     let user_email = req.extensions().get::<StructWithEmail>().cloned();
 
     if user_email.is_none(){
-        return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
+        return HttpResponse::Forbidden().json(CustomError{error:"email missing".to_string()});
     }
 
     let user_email = user_email.unwrap().email;
@@ -27,14 +27,14 @@ async fn purchase_course_handler(data:web::Data<GlobalState>, path:web::Path<Str
     let user_uuid = Uuid::from_str(&user_exists.unwrap());
 
     if user_uuid.is_err(){
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     let course_id = path.into_inner();
     let course_uuid = uuid::Uuid::from_str(&course_id);
 
     if course_uuid.is_err(){
-        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
+        return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error".to_string()});
     }
 
     let existing_purchases = get_user_purchases(pool, user_uuid.clone().unwrap()).await;
@@ -53,7 +53,7 @@ async fn purchase_course_handler(data:web::Data<GlobalState>, path:web::Path<Str
     });
 
     if existing_purchase.is_some(){
-        return HttpResponse::BadRequest().json(CustomError{error:"Already Purchased"});
+        return HttpResponse::BadRequest().json(CustomError{error:"Already Purchased".to_string()});
     }
 
     let purchase_res = purchase::purchase_course(pool, course_uuid.unwrap(), user_uuid.unwrap()).await;

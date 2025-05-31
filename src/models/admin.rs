@@ -28,7 +28,7 @@ pub async fn create_admin(pool:&Pool<Postgres>, admin_meta: CreateAdmin) -> Resu
 
     match user {
         Ok(val) => Ok(val.id),
-        Err(_e) => Err(CustomError{error:"Error while creating admin"})
+        Err(_e) => Err(CustomError{error:"Error while creating admin".to_string()})
     }
 }
 
@@ -44,7 +44,7 @@ pub async fn retrieve_admin_password(pool:&Pool<Postgres>, email:&str) -> Result
     )
     .fetch_one(pool)
     .await
-    .map_err(|_e|CustomError{error:"Error while retrieving admin password"})?;
+    .map_err(|_e|CustomError{error:"Error while retrieving admin password".to_string()})?;
 
     Ok(res.val)
 }
@@ -60,7 +60,7 @@ pub async fn check_admin_exists(pool:&Pool<Postgres>, email:&str) -> Result<bool
         email
     )
     .fetch_optional(pool)
-    .await.map_err(|_e|CustomError{error:"Error while fetching admin by email"})?;
+    .await.map_err(|_e|CustomError{error:"Error while fetching admin by email".to_string()})?;
 
     match result {
         Some(_val) => Ok(true),
@@ -80,7 +80,7 @@ pub async fn get_admin_id_by_email(pool:&Pool<Postgres>, email:&String) -> Resul
         email
     ).fetch_one(pool)
     .await
-    .map_err(|_|CustomError{error:"Error while fetching admin id"})?;
+    .map_err(|_|CustomError{error:"Error while fetching admin id".to_string()})?;
 
     Ok(result.id)
 }

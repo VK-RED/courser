@@ -1,5 +1,5 @@
 use actix_web::{http::StatusCode, ResponseError};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use derive_more::derive::{Display, Error as DeriveMoreError};
 
@@ -15,10 +15,10 @@ pub enum AppError{
     InternalError
 }
 
-#[derive(Debug, Display, DeriveMoreError, Serialize)]
+#[derive(Debug, Display, DeriveMoreError, Serialize, Deserialize)]
 #[display("error :{}", error)]
 pub struct CustomError{
-    pub error:&'static str
+    pub error:String
 }
 
 impl ResponseError for CustomError{}

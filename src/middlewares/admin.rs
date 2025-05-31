@@ -11,13 +11,13 @@ pub async fn admin_middleware(
     let auth_header = req.headers().get("Authorization");
 
     if auth_header.is_none(){
-        return  Err(Error::from(CustomError{error:"token missing"}));
+        return  Err(Error::from(CustomError{error:"token missing".to_string()}));
     }
 
     let token = auth_header.unwrap().to_str();
 
     if token.is_err(){
-        return Err(Error::from(CustomError{error:"Internal Server Error"}));
+        return Err(Error::from(CustomError{error:"Internal Server Error".to_string()}));
     }
 
     let token = token.unwrap();
@@ -29,7 +29,7 @@ pub async fn admin_middleware(
 
     if decoded.is_err(){
         println!("error while decoding admin jwt key");
-        return Err(Error::from(CustomError{error:"Internal Error"}));
+        return Err(Error::from(CustomError{error:"Internal Error".to_string()}));
     }
 
     let admin_email = decoded.unwrap().claims.sub;
