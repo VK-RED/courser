@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use actix_web::{get, post, web::{self, Json}, HttpMessage, HttpRequest, HttpResponse, Responder,test};
+use actix_web::{get, post, web::{self, Json}, HttpMessage, HttpRequest, HttpResponse, Responder};
 use chrono::{Utc, Duration};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::types::{Uuid};
@@ -124,13 +124,12 @@ async fn user_purchases(data:web::Data<GlobalState>, req:HttpRequest) -> impl Re
 mod tests{
 
     use crate::{models::purchase::Purchase, test_init_app::init};
-
+    use actix_web::test;
     use super::*;
-    
-    #[actix_web::test]
-    async fn test_signup_user(){
 
-        let app = init(signup_user).await;
+    #[actix_web::test]
+    async fn test_signup_and_signin(){
+        let (app, pool) = init(signup_user).await;
 
         let user = CreateUser{
             email: String::from("vk@gmail.com"),
@@ -150,12 +149,6 @@ mod tests{
         
         assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
 
-    }
-
-    #[actix_web::test]
-    async fn test_signin_user(){
-        let app = init(signin_user).await;
-
         let json = EmailAndPassword {
             email: "vk@gmail.com".to_string(),
             password: "THERIYATHU".to_string(),
@@ -172,14 +165,39 @@ mod tests{
         let res_body:SigninResponse = test::read_body_json(res).await;
 
         assert_eq!(&res_body.message, "Signined in Successfully");
-    }   
 
+        sqlx::query("DELETE FROM user_table WHERE email = $1")
+            .bind("vk@gmail.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+    }
+    
     #[actix_web::test]
     async fn test_invalid_credentials(){
-        let app = init(signin_user).await;
+        let (app, pool) = init(signup_user).await;
+
+        let user = CreateUser{
+            email: String::from("newone@gmail.com"),
+            name: String::from("Iron Man"),
+            password: String::from("THERIYATHU")
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(user)
+        .uri("/api/v1/user/signup")
+        .send_request(&app)
+        .await;
+
+        assert!(res.status().is_success());
+
+        let signup_res_body:SignupResponse = test::read_body_json(res).await;
+        
+        assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
 
         let json = EmailAndPassword {
-            email: "vk@gmail.com".to_string(),
+            email: "newone@gmail.com".to_string(),
             password: "IRONMAN".to_string(),
         };
 
@@ -191,13 +209,20 @@ mod tests{
 
         let res_body:CustomError = test::read_body_json(res).await;
         assert_eq!(res_body.error, "Enter Valid Password".to_string());
+
+        sqlx::query("DELETE FROM user_table WHERE email = $1")
+            .bind("newone@gmail.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+
     }   
 
     #[actix_web::test]
     async fn test_signin_with_unused_email(){
-        let app = init(signin_user).await;
+        let (app, _pool) = init(signin_user).await;
         let json = EmailAndPassword {
-            email: "rk@gmail.com".to_string(),
+            email: "unused@gmail.com".to_string(),
             password: "THERIYATHU".to_string(),
         };
 
@@ -212,11 +237,30 @@ mod tests{
     }
 
     #[actix_web::test]
-    async fn test_signup_with_used_email(){
-        let app = init(signup_user).await;
+    async fn test_signup_twice(){
+
+        let (app, pool) = init(signup_user).await;
 
         let user = CreateUser{
-            email: String::from("vk@gmail.com"),
+            email: String::from("twice@gmail.com"),
+            name: String::from("Iron Man"),
+            password: String::from("THERIYATHU")
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(user)
+        .uri("/api/v1/user/signup")
+        .send_request(&app)
+        .await;
+
+        assert!(res.status().is_success());
+
+        let signup_res_body:SignupResponse = test::read_body_json(res).await;
+        
+        assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
+
+        let user = CreateUser{
+            email: String::from("twice@gmail.com"),
             name: String::from("Iron Man"),
             password: String::from("THERIYATHU")
         };
@@ -232,27 +276,47 @@ mod tests{
         let res_body:CustomError = test::read_body_json(res).await;
         assert_eq!(res_body.error, "User exists already with this email".to_string());
 
+        sqlx::query("DELETE FROM user_table WHERE email = $1")
+            .bind("twice@gmail.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+
     }
 
     #[actix_web::test]
     async fn test_user_purchases(){
-        let app = init(user_purchases).await;
+        let (app, pool) = init(signup_user).await;
 
-        let json = EmailAndPassword {
-            email: "vk@gmail.com".to_string(),
-            password: "THERIYATHU".to_string(),
+        let user = CreateUser{
+            email: String::from("purchase@test.com"),
+            name: String::from("Iron Man"),
+            password: String::from("THERIYATHU")
         };
 
         let res = test::TestRequest::post()
-        .set_json(json)
-        .uri("/api/v1/user/signin")
+        .set_json(user)
+        .uri("/api/v1/user/signup")
         .send_request(&app)
         .await;
 
         assert!(res.status().is_success());
 
-        let res_body:SigninResponse = test::read_body_json(res).await;
-        let token = res_body.token;
+        let json = EmailAndPassword {
+            email: "purchase@test.com".to_string(),
+            password: "THERIYATHU".to_string(),
+        };
+
+        let res_1 = test::TestRequest::post()
+        .set_json(json)
+        .uri("/api/v1/user/signin")
+        .send_request(&app)
+        .await;
+
+        assert!(res_1.status().is_success());
+
+        let res_1_body:SigninResponse = test::read_body_json(res_1).await;
+        let token = res_1_body.token;
 
         let res = test::TestRequest::get()
         .uri("/api/v1/user/purchases")
@@ -264,11 +328,17 @@ mod tests{
 
         let res_body:Vec<Purchase> = test::read_body_json(res).await;
         println!("User Purchases: {:?}", res_body);
+
+        sqlx::query("DELETE FROM user_table WHERE email = $1")
+            .bind("purchase@test.com")
+            .execute(&pool)
+            .await
+            .unwrap();
     }
 
     #[actix_web::test]
     async fn test_user_purchases_wo_headers() {
-        let app = init(user_purchases).await;
+        let (app,_pool) = init(user_purchases).await;
     
         // Method 1: Use call_service instead of send_request
         let req = test::TestRequest::get()
