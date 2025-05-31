@@ -123,34 +123,34 @@ async fn user_purchases(data:web::Data<GlobalState>, req:HttpRequest) -> impl Re
 #[cfg(test)]
 mod tests{
 
-    use crate::test_init_app::init;
+    use crate::{models::purchase::Purchase, test_init_app::init};
 
     use super::*;
     
-    // #[actix_web::test]
-    // async fn test_signup_user(){
+    #[actix_web::test]
+    async fn test_signup_user(){
 
-    //     let app = init(signup_user).await;
+        let app = init(signup_user).await;
 
-    //     let user = CreateUser{
-    //         email: String::from("vk@gmail.com"),
-    //         name: String::from("Iron Man"),
-    //         password: String::from("THERIYATHU")
-    //     };
+        let user = CreateUser{
+            email: String::from("vk@gmail.com"),
+            name: String::from("Iron Man"),
+            password: String::from("THERIYATHU")
+        };
 
-    //     let res = test::TestRequest::post()
-    //     .set_json(user)
-    //     .uri("/api/v1/user/signup")
-    //     .send_request(&app)
-    //     .await;
+        let res = test::TestRequest::post()
+        .set_json(user)
+        .uri("/api/v1/user/signup")
+        .send_request(&app)
+        .await;
 
-    //     assert!(res.status().is_success());
+        assert!(res.status().is_success());
 
-    //     let signup_res_body:SignupResponse = test::read_body_json(res).await;
+        let signup_res_body:SignupResponse = test::read_body_json(res).await;
         
-    //     assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
+        assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
 
-    // }
+    }
 
     #[actix_web::test]
     async fn test_signin_user(){
@@ -231,6 +231,60 @@ mod tests{
 
         let res_body:CustomError = test::read_body_json(res).await;
         assert_eq!(res_body.error, "User exists already with this email".to_string());
+
+    }
+
+    #[actix_web::test]
+    async fn test_user_purchases(){
+        let app = init(user_purchases).await;
+
+        let json = EmailAndPassword {
+            email: "vk@gmail.com".to_string(),
+            password: "THERIYATHU".to_string(),
+        };
+
+        let res = test::TestRequest::post()
+        .set_json(json)
+        .uri("/api/v1/user/signin")
+        .send_request(&app)
+        .await;
+
+        assert!(res.status().is_success());
+
+        let res_body:SigninResponse = test::read_body_json(res).await;
+        let token = res_body.token;
+
+        let res = test::TestRequest::get()
+        .uri("/api/v1/user/purchases")
+        .append_header(("Authorization", token))
+        .send_request(&app)
+        .await;
+
+        assert!(res.status().is_success());
+
+        let res_body:Vec<Purchase> = test::read_body_json(res).await;
+        println!("User Purchases: {:?}", res_body);
+    }
+
+    #[actix_web::test]
+    async fn test_user_purchases_wo_headers() {
+        let app = init(user_purchases).await;
+    
+        // Method 1: Use call_service instead of send_request
+        let req = test::TestRequest::get()
+            .uri("/api/v1/user/purchases")
+            .to_request();
+            
+        let res = test::try_call_service(&app, req).await;
+
+        if let Err(e) = res {
+            let a: Option<&CustomError> = e.as_error();
+            assert!(a.is_some());
+            assert_eq!(a.unwrap().error, "Token Not found");
+            return;
+        }
+
+        panic!("Expected error");
 
     }
 
