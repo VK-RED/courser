@@ -10,6 +10,9 @@ mod handlers;
 mod utils;
 mod middlewares;
 
+#[cfg(test)]
+mod test_init_app;
+
 struct GlobalState{
     pool: Pool<Postgres>
 }
