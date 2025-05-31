@@ -5,7 +5,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::types::Uuid;
 
-use crate::{errors::CustomError, models::{admin::{check_admin_exists, create_admin, get_admin_id_by_email, retrieve_admin_password}, course::{self, create_course}}, schema::{admin::{CourseResponse, CreateAdmin, CreateCourse, CreateCourseWithoutAdminId, UpdateCourse}, EmailAndPassword, JWTClaims, SigninResponse, SignupResponse, StructWithEmail}, utils::{hash_password, verify_password}, GlobalState};
+use crate::{errors::CustomError, models::{admin::{check_admin_exists, create_admin, get_admin_id_by_email, retrieve_admin_password}, course::{self, create_course}}, schema::{admin::{CourseResponse, CreateAdmin, CreateCourse, CreateCourseWithoutAdminId, UpdateCourse}, EmailAndPassword, JWTClaims, SigninResponse, SignupResponse}, utils::{hash_password, verify_password}, GlobalState};
 
 #[post("/signup")]
 async fn signup_admin(data:web::Data<GlobalState>, admin:Json<CreateAdmin>) -> impl Responder{
@@ -86,17 +86,17 @@ async fn signin_admin(data:web::Data<GlobalState>, admin_data:web::Json<EmailAnd
 
 }
 
-#[post("/course")]
+#[post("")]
 async fn create_course_handler(data:web::Data<GlobalState>, course:Json<CreateCourseWithoutAdminId>, req:HttpRequest) -> impl Responder{
     let pool = &data.pool;
 
-    let admin_email = req.extensions().get::<StructWithEmail>().cloned();
+    let admin_email = req.extensions().get::<String>().cloned();
 
     if admin_email.is_none(){
         return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
     }
 
-    let admin_email = admin_email.unwrap().email;
+    let admin_email = admin_email.unwrap();
 
     let admin_exists = get_admin_id_by_email(pool, &admin_email).await;
 
@@ -136,7 +136,7 @@ async fn create_course_handler(data:web::Data<GlobalState>, course:Json<CreateCo
 
 }
 
-#[put("/course/{id}")]
+#[put("/{id}")]
 async fn update_course_handler(data:web::Data<GlobalState>, course:Json<UpdateCourse>, req:HttpRequest, path:web::Path<String>) -> impl Responder {
     
     let pool = &data.pool;
@@ -148,13 +148,13 @@ async fn update_course_handler(data:web::Data<GlobalState>, course:Json<UpdateCo
         return HttpResponse::InternalServerError().json(CustomError{error:"Internal Error"});
     }
 
-    let admin_email = req.extensions().get::<StructWithEmail>().cloned();
+    let admin_email = req.extensions().get::<String>().cloned();
 
     if admin_email.is_none(){
         return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
     }
 
-    let admin_email = admin_email.unwrap().email;
+    let admin_email = admin_email.unwrap();
 
     let admin_exists = get_admin_id_by_email(pool, &admin_email).await;
 
@@ -209,13 +209,13 @@ async fn update_course_handler(data:web::Data<GlobalState>, course:Json<UpdateCo
 async fn get_all_courses_handler(data:web::Data<GlobalState>, req:HttpRequest) -> impl Responder {
     let pool = &data.pool;
 
-    let admin_email = req.extensions().get::<StructWithEmail>().cloned();
+    let admin_email = req.extensions().get::<String>().cloned();
 
     if admin_email.is_none(){
         return HttpResponse::Forbidden().json(CustomError{error:"email missing"});
     }
 
-    let admin_email = admin_email.unwrap().email;
+    let admin_email = admin_email.unwrap();
 
     let admin_exists = get_admin_id_by_email(pool, &admin_email).await;
 
