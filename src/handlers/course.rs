@@ -5,7 +5,7 @@ use sqlx::types::{uuid, Uuid};
 
 use crate::{errors::CustomError,models::{course, purchase::{self, get_user_purchases}, user::get_user_id_by_email}, schema::{admin::CourseResponse, PurchaseResponse, StructWithEmail}, GlobalState};
 
-#[post("/purchase/${course_id}")]
+#[post("/{course_id}")]
 async fn purchase_course_handler(data:web::Data<GlobalState>, path:web::Path<String>, req:HttpRequest) -> impl Responder {
 
     let pool = &data.pool;
