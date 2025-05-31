@@ -248,3 +248,359 @@ async fn get_all_courses_handler(data:web::Data<GlobalState>, req:HttpRequest) -
         Err(e) => HttpResponse::BadGateway().json(e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{schema::admin::CreateCourseWithoutAdminId, test_init_app::init};
+    use actix_web::test;
+    use super::*;
+
+    #[actix_web::test]
+    async fn test_admin_signup_and_signin() {
+        let (app, pool) = init(signup_admin).await;
+
+        let admin = CreateAdmin {
+            email: String::from("admin@test.com"),
+            name: String::from("Test Admin"),
+            password: String::from("adminpass123")
+        };
+
+        let res = test::TestRequest::post()
+            .set_json(admin)
+            .uri("/api/v1/admin/signup")
+            .send_request(&app)
+            .await;
+
+        assert!(res.status().is_success());
+
+        let signup_res_body: SignupResponse = test::read_body_json(res).await;
+        assert_eq!(signup_res_body.message, "Signed up successfully".to_string());
+
+        let json = EmailAndPassword {
+            email: "admin@test.com".to_string(),
+            password: "adminpass123".to_string(),
+        };
+
+        let res = test::TestRequest::post()
+            .set_json(json)
+            .uri("/api/v1/admin/signin")
+            .send_request(&app)
+            .await;
+
+        assert!(res.status().is_success());
+
+        let res_body: SigninResponse = test::read_body_json(res).await;
+        assert_eq!(&res_body.message, "Signined in Successfully");
+
+        sqlx::query("DELETE FROM admin_table WHERE email = $1")
+            .bind("admin@test.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+    #[actix_web::test]
+    async fn test_admin_invalid_credentials() {
+        let (app, pool) = init(signup_admin).await;
+
+        let admin = CreateAdmin {
+            email: String::from("admin2@test.com"),
+            name: String::from("Test Admin"),
+            password: String::from("adminpass123")
+        };
+
+        let res = test::TestRequest::post()
+            .set_json(admin)
+            .uri("/api/v1/admin/signup")
+            .send_request(&app)
+            .await;
+
+        assert!(res.status().is_success());
+
+        let json = EmailAndPassword {
+            email: "admin2@test.com".to_string(),
+            password: "wrongpassword".to_string(),
+        };
+
+        let res = test::TestRequest::post()
+            .set_json(json)
+            .uri("/api/v1/admin/signin")
+            .send_request(&app)
+            .await;
+
+        let res_body: CustomError = test::read_body_json(res).await;
+        assert_eq!(res_body.error, "Enter Valid Password".to_string());
+
+        sqlx::query("DELETE FROM admin_table WHERE email = $1")
+            .bind("admin2@test.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+    #[actix_web::test]
+    async fn test_create_course() {
+        let (app, pool) = init(signup_admin).await;
+
+        // First signup and signin to get token
+        let admin = CreateAdmin {
+            email: String::from("admin3@test.com"),
+            name: String::from("Test Admin"),
+            password: String::from("adminpass123")
+        };
+
+        let _ = test::TestRequest::post()
+            .set_json(admin)
+            .uri("/api/v1/admin/signup")
+            .send_request(&app)
+            .await;
+
+        let json = EmailAndPassword {
+            email: "admin3@test.com".to_string(),
+            password: "adminpass123".to_string(),
+        };
+
+        let signin_res = test::TestRequest::post()
+            .set_json(json)
+            .uri("/api/v1/admin/signin")
+            .send_request(&app)
+            .await;
+
+        let signin_body: SigninResponse = test::read_body_json(signin_res).await;
+        let token = signin_body.token;
+
+        // Create course
+        let course = CreateCourseWithoutAdminId {
+            title: "Test Course".to_string(),
+            image_url: Some("https://test.com/image.jpg".to_string()),
+            price: 5000,
+        };
+
+        let res = test::TestRequest::post()
+            .set_json(course)
+            .append_header(("Authorization", token))
+            .uri("/api/v1/admin/course")
+            .send_request(&app)
+            .await;
+
+        assert!(res.status().is_success());
+
+        let course_res: CourseResponse = test::read_body_json(res).await;
+        assert_eq!(course_res.title, "Test Course");
+
+        // Cleanup
+        sqlx::query("DELETE FROM course_table WHERE title = $1")
+            .bind("Test Course")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        sqlx::query("DELETE FROM admin_table WHERE email = $1")
+            .bind("admin3@test.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+    #[actix_web::test]
+    async fn test_create_course_without_auth() {
+        let (app, _) = init(create_course_handler).await;
+
+        let course = CreateCourseWithoutAdminId {
+            title: "Test Course".to_string(),
+            image_url: Some("https://test.com/image.jpg".to_string()),
+            price: 7888,
+        };
+
+        let req = test::TestRequest::post()
+            .set_json(course)
+            .uri("/api/v1/admin/course")
+            .to_request();
+
+        let res = test::try_call_service(&app, req).await;
+
+        match res {
+            Ok(_) => panic!("Expected error"),
+            Err(e) => {
+                let e= e.as_error::<CustomError>().unwrap();
+                assert_eq!(e.error, "token missing");
+            },
+        }
+    }
+
+    #[actix_web::test]
+    async fn test_update_course() {
+        let (app, pool) = init(signup_admin).await;
+
+        // First create an admin and get token
+        let admin = CreateAdmin {
+            email: String::from("admin4@test.com"),
+            name: String::from("Test Admin"),
+            password: String::from("adminpass123")
+        };
+
+        let _ = test::TestRequest::post()
+            .set_json(admin)
+            .uri("/api/v1/admin/signup")
+            .send_request(&app)
+            .await;
+
+        let json = EmailAndPassword {
+            email: "admin4@test.com".to_string(),
+            password: "adminpass123".to_string(),
+        };
+
+        let signin_res = test::TestRequest::post()
+            .set_json(json)
+            .uri("/api/v1/admin/signin")
+            .send_request(&app)
+            .await;
+
+        let signin_body: SigninResponse = test::read_body_json(signin_res).await;
+        let token = signin_body.token;
+
+        // First create a course
+        let course = CreateCourseWithoutAdminId {
+            title: "Original Course".to_string(),
+            image_url: Some("https://test.com/old.jpg".to_string()),
+            price: 5000,
+        };
+
+        let create_res = test::TestRequest::post()
+            .set_json(course)
+            .append_header(("Authorization", token.clone()))
+            .uri("/api/v1/admin/course")
+            .send_request(&app)
+            .await;
+
+        let created_course: CourseResponse = test::read_body_json(create_res).await;
+
+        // Now update the course
+        let update_course = UpdateCourse {
+            title: "Updated Course".to_string(),
+            image_url: Some("https://test.com/new.jpg".to_string()),
+            price: 6000,
+        };
+
+        let update_res = test::TestRequest::put()
+            .set_json(update_course)
+            .append_header(("Authorization", token))
+            .uri(&format!("/api/v1/admin/course/{}", created_course.id))
+            .send_request(&app)
+            .await;
+
+        assert!(update_res.status().is_success());
+
+        let updated_course: CourseResponse = test::read_body_json(update_res).await;
+        assert_eq!(updated_course.title, "Updated Course");
+        assert_eq!(updated_course.price, 6000);
+
+        let course_uuid = Uuid::from_str(&created_course.id).unwrap();
+
+        // Cleanup
+        sqlx::query("DELETE FROM course_table WHERE id = $1")
+            .bind(course_uuid)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        sqlx::query("DELETE FROM admin_table WHERE email = $1")
+            .bind("admin4@test.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+    #[actix_web::test]
+    async fn test_get_all_courses() {
+        let (app, pool) = init(signup_admin).await;
+
+        // Create admin and get token
+        let admin = CreateAdmin {
+            email: String::from("admin7@test.com"),
+            name: String::from("Test Admin"),
+            password: String::from("adminpass123")
+        };
+
+        let _ = test::TestRequest::post()
+            .set_json(admin)
+            .uri("/api/v1/admin/signup")
+            .send_request(&app)
+            .await;
+
+        let json = EmailAndPassword {
+            email: "admin7@test.com".to_string(),
+            password: "adminpass123".to_string(),
+        };
+
+        let signin_res = test::TestRequest::post()
+            .set_json(json)
+            .uri("/api/v1/admin/signin")
+            .send_request(&app)
+            .await;
+
+        let signin_res_body: SigninResponse = test::read_body_json(signin_res).await;
+
+        let token = signin_res_body.token;
+
+        // Create multiple courses
+        let courses = vec![
+            CreateCourseWithoutAdminId {
+                title: "Course 1".to_string(),
+                image_url: Some("https://test.com/1.jpg".to_string()),
+                price: 5000,
+            },
+            CreateCourseWithoutAdminId {
+                title: "Course 2".to_string(),
+                image_url: Some("https://test.com/2.jpg".to_string()),
+                price: 6000,
+            },
+        ];
+
+        let mut created_courses = Vec::new();
+
+        for course in courses {
+            let create_res = test::TestRequest::post()
+                .set_json(course)
+                .append_header(("Authorization", token.clone()))
+                .uri("/api/v1/admin/course")
+                .send_request(&app)
+                .await;
+
+            let course: CourseResponse = test::read_body_json(create_res).await;
+            created_courses.push(course);
+        }
+
+        // Get all courses
+        let get_res = test::TestRequest::get()
+            .append_header(("Authorization", token))
+            .uri("/api/v1/admin/course/courses")
+            .send_request(&app)
+            .await;
+
+        assert!(get_res.status().is_success());
+        let courses: Vec<CourseResponse> = test::read_body_json(get_res).await;
+        assert_eq!(courses.len(), 2);
+        assert!(courses.iter().any(|c| c.title == "Course 1"));
+        assert!(courses.iter().any(|c| c.title == "Course 2"));
+
+        // Cleanup
+        for course in created_courses {
+
+            let course_uuid = Uuid::from_str(&course.id).unwrap();
+
+            sqlx::query("DELETE FROM course_table WHERE id = $1")
+                .bind(course_uuid)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+
+        sqlx::query("DELETE FROM admin_table WHERE email = $1")
+            .bind("admin7@test.com")
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+}

@@ -14,21 +14,21 @@ pub struct CreateCourse {
     pub admin_id: Uuid,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct CreateCourseWithoutAdminId {
     pub title: String,
     pub image_url: Option<String>,
     pub price: i32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct UpdateCourse {
     pub title: String,
     pub image_url: Option<String>,
     pub price: i32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct CourseResponse{
     pub id: String,
     pub title: String,
