@@ -4,10 +4,11 @@ use actix_http::{Request};
 use crate::{handlers, middlewares, GlobalState};
 use dotenv::dotenv;
 use actix_web::{middleware::from_fn, web::scope};
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::{PgPoolOptions, Postgres}, Pool};
+
 
 #[cfg(test)]
-pub async fn init(_service_factory: impl HttpServiceFactory + 'static) -> impl Service<Request, Response = ServiceResponse, Error = Error> {
+pub async fn init(_service_factory: impl HttpServiceFactory + 'static) -> (impl Service<Request, Response = ServiceResponse, Error = Error>, Pool<Postgres>) {
 
     dotenv().ok();
 
@@ -17,16 +18,16 @@ pub async fn init(_service_factory: impl HttpServiceFactory + 'static) -> impl S
     std::env::var("ADMIN_JWT_PASSWORD").expect("ADMIN_JWT_PASSWORD must be set");
 
     let pool = PgPoolOptions::new()
-    .max_connections(5)
+    .max_connections(2)
     .connect(&database_url)
     .await
     .expect("Cant connect to the database");
 
-    let global_state = GlobalState{pool};
+    let global_state = GlobalState{pool:pool.clone()};
 
     let app_data = web::Data::new(global_state);
 
-    test::init_service(
+    let app = test::init_service(
         App::new()
             .service(
                 scope("/api/v1")
@@ -67,5 +68,7 @@ pub async fn init(_service_factory: impl HttpServiceFactory + 'static) -> impl S
                     .service(handlers::course::get_all_courses_handler)
                 )
             )
-    ).await
+    ).await;
+
+    (app, pool.clone())
 }
