@@ -56,16 +56,23 @@ async fn main() -> Result<(), AppError> {
                     .service(handlers::user::signin_user)
                 )
                 .service(
-                    scope("/admin")
-                    .service(handlers::admin::signup_admin)
-                    .service(handlers::admin::signin_admin)
-                )
-                // TODO: add admin middleware and other routes
-                .service(
                     // guard the purchase handler
                     scope("/courses/purchase")
                     .wrap(from_fn(middlewares::user::user_middleware))
                     .service(handlers::course::purchase_course_handler)
+                )
+                .service(
+                    //this will match /course/{id} as well as /courses
+                    scope("/admin/course")
+                    .wrap(from_fn(middlewares::admin::admin_middleware))
+                    .service(handlers::admin::create_course_handler)
+                    .service(handlers::admin::update_course_handler)
+                    .service(handlers::admin::get_all_courses_handler)
+                )
+                .service(
+                    scope("/admin")
+                    .service(handlers::admin::signup_admin)
+                    .service(handlers::admin::signin_admin)
                 )
                 .service(
                     scope("/courses")
