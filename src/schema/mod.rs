@@ -39,8 +39,8 @@ pub struct StructWithEmail{
     pub email: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct PurchaseResponse{
     pub id: String,
-    pub message: &'static str,
+    pub message: String,
 }
