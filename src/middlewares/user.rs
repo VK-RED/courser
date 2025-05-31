@@ -1,4 +1,4 @@
-use actix_web::{body::MessageBody, dev::{ServiceRequest, ServiceResponse}, middleware::Next, Error, HttpMessage, HttpResponse};
+use actix_web::{body::MessageBody, dev::{ServiceRequest, ServiceResponse}, middleware::Next, Error, HttpMessage};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 
 use crate::{errors::{AppError, CustomError}, schema::{JWTClaims, StructWithEmail}};
