@@ -17,7 +17,7 @@ mod tests{
 
     #[actix_web::test]
     async fn test_hello_world(){
-        let app = crate::test_init_app::init(hello_world).await;
+        let (app, _s) = crate::test_init_app::init(hello_world).await;
 
         let req = TestRequest::get().uri("/api/v1/hello").to_request();
         let res = test::call_service(&app, req).await;
