@@ -22,7 +22,7 @@ pub async fn get_user_purchases(pool:&Pool<Postgres>, user_id:Uuid) -> Result<Ve
     )
     .fetch_all(pool)
     .await
-    .map_err(|e|CustomError{error:"Error while fetching user purchases"})?;
+    .map_err(|_e|CustomError{error:"Error while fetching user purchases"})?;
 
     Ok(user_purchases)
 }

@@ -1,6 +1,6 @@
 use sqlx::{types::{uuid, Uuid}, Pool, Postgres};
 
-use crate::{errors::CustomError, schema::{admin::{CreateCourse, UpdateCourse}, StructWithId}};
+use crate::{errors::CustomError, schema::{admin::{CreateCourse, UpdateCourse}}};
 
 #[derive(Debug)]
 pub struct Course{
